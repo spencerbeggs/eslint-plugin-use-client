@@ -1,0 +1,18 @@
+{
+	"$schema": "https://turborepo.org/schema.json",
+	"extends": ["//"],
+	"tasks": {
+		"start": {
+			"cache": false
+		},
+		"build": {
+			"inputs": ["*.json", "*.ts", "src/**", "public/**", "../LICENSE"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"release": {
+			"dependsOn": ["^release"],
+			"outputLogs": "new-only"
+		}
+	}
+}
