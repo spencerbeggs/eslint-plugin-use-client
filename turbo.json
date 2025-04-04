@@ -1,9 +1,6 @@
 {
 	"$schema": "https://turborepo.org/schema.json",
 	"tasks": {
-		"start": {
-			"cache": false
-		},
 		"release": {
 			"dependsOn": ["^release"],
 			"outputLogs": "new-only"
