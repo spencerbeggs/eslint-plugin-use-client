@@ -3,6 +3,7 @@ import { createTypeScriptImportResolver } from "eslint-import-resolver-typescrip
 import importPlugin from "eslint-plugin-import-x";
 import packageJsonPlugin from "eslint-plugin-package-json";
 import prettierPlugin from "eslint-plugin-prettier/recommended";
+import globals from "globals";
 import tseslint from "typescript-eslint";
 import type { FlatConfig } from "@typescript-eslint/utils/ts-eslint";
 
@@ -22,6 +23,9 @@ const config = tseslint.config(
 				projectService: true,
 				allowDefaultProject: true,
 				tsconfigRootDir: import.meta.dirname
+			},
+			globals: {
+				...globals.node
 			}
 		},
 		settings: {

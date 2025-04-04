@@ -6,6 +6,7 @@
     // },
     "eslint.enable": true,
     "files.exclude": {
+        "**/.turbo": true,
         "**/node_modules": true,
     },
     "eslint.debug": true,
@@ -32,6 +33,7 @@
         "editor.formatOnSave": true
     },
     "search.exclude": {
+        "**/.turbo": true,
         "**/node_modules": true,
         "**/dist": true,
         "**/build": true
