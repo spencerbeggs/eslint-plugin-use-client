@@ -1,0 +1,22 @@
+version: 2
+updates:
+    - package-ecosystem: "npm"
+      directory: "/"
+      schedule:
+          interval: "weekly"
+      # Optional settings
+      open-pull-requests-limit: 10
+      versioning-strategy: "auto"
+      ignore:
+          - dependency-name: "*"
+            update-types: ["version-update:semver-major"]
+    - package-ecosystem: "npm"
+      directory: "/pkg"
+      schedule:
+          interval: "weekly"
+      # Optional settings
+      open-pull-requests-limit: 10
+      versioning-strategy: "auto"
+      ignore:
+          - dependency-name: "*"
+            update-types: ["version-update:semver-major"]
