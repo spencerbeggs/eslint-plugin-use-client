@@ -76,38 +76,64 @@ interface ModuleCategories {
 
 // Load module categories from config file
 export function loadModuleCategories(): ModuleCategories {
-	try {
-		const configPath = join(process.cwd(), "use-client-config.json");
-		if (existsSync(configPath)) {
-			return JSON.parse(readFileSync(configPath, "utf8")) as ModuleCategories;
-		}
-	} catch (_err) {
-		console.info("No use-client-config.json file found, using defaults");
-		// Fallback to defaults
-	}
-	return {
+	const defaultConfig: ModuleCategories = {
 		clientModules: [],
 		serverModules: [],
 		sharedModules: [],
 		clientOnlyHooks: [],
 		serverSafeHooks: []
 	};
+
+	try {
+		const configPath = join(process.cwd(), "use-client-config.json");
+		if (existsSync(configPath)) {
+			const parsed = JSON.parse(readFileSync(configPath, "utf8")) as unknown;
+			// Validate the shape of the config object
+			if (
+				typeof parsed === "object" &&
+				parsed !== null &&
+				"clientModules" in parsed &&
+				"serverModules" in parsed &&
+				"sharedModules" in parsed &&
+				"clientOnlyHooks" in parsed &&
+				"serverSafeHooks" in parsed &&
+				Array.isArray((parsed as ModuleCategories).clientModules) &&
+				Array.isArray((parsed as ModuleCategories).serverModules) &&
+				Array.isArray((parsed as ModuleCategories).sharedModules) &&
+				Array.isArray((parsed as ModuleCategories).clientOnlyHooks) &&
+				Array.isArray((parsed as ModuleCategories).serverSafeHooks)
+			) {
+				return parsed as ModuleCategories;
+			}
+			// If validation fails, return defaults
+			return defaultConfig;
+		}
+	} catch (_err) {
+		console.info("No use-client-config.json file found, using defaults");
+		// Fallback to defaults
+	}
+	return defaultConfig;
 }
 
 // Check if a node is a client detection condition (typeof window !== 'undefined')
 export function isClientDetectionCondition(node: TSESTree.Node): boolean {
 	if (node.type === AST_NODE_TYPES.BinaryExpression && ["!==", "!="].includes(node.operator)) {
-		// Check left side: typeof window
-		const isLeftTypeofWindow =
-			node.left.type === AST_NODE_TYPES.UnaryExpression &&
-			node.left.operator === "typeof" &&
-			node.left.argument.type === AST_NODE_TYPES.Identifier &&
-			node.left.argument.name === "window";
+		// Check for typeof window
+		const isTypeofWindow = (node: TSESTree.Node): boolean =>
+			node.type === AST_NODE_TYPES.UnaryExpression &&
+			node.operator === "typeof" &&
+			node.argument.type === AST_NODE_TYPES.Identifier &&
+			node.argument.name === "window";
 
-		// Check right side: 'undefined'
-		const isRightUndefined = node.right.type === AST_NODE_TYPES.Literal && node.right.value === "undefined";
+		// Check for 'undefined' literal
+		const isUndefinedLiteral = (node: TSESTree.Node): boolean =>
+			node.type === AST_NODE_TYPES.Literal && node.value === "undefined";
 
-		return (isLeftTypeofWindow && isRightUndefined) || (isRightUndefined && isLeftTypeofWindow);
+		// Check both orders: typeof window !== 'undefined' and 'undefined' !== typeof window
+		return (
+			(isTypeofWindow(node.left) && isUndefinedLiteral(node.right)) ||
+			(isUndefinedLiteral(node.left) && isTypeofWindow(node.right))
+		);
 	}
 
 	return false;
@@ -128,7 +154,8 @@ export function mightBeCompiledClientCode(content: string): boolean {
 	return (
 		/\bwindow\b.*=.*this\b/.test(content) ||
 		/\bdocument\b.*=.*this\.\w+/.test(content) ||
-		/typeof\s+window\s*!==?\s*['"]undefined['"]/.test(content)
+		/typeof\s+window\s*!==?\s*['"]undefined['"]/.test(content) ||
+		/['"]undefined['"]\s*!==?\s*typeof\s+window/.test(content)
 	);
 }
 
@@ -145,36 +172,44 @@ export interface FileAnalysisResult {
 	analyzedAt?: number;
 }
 
-// Cache to store AST data for files
-const astCache = new Map<string, FileAnalysisResult>();
+// Cache for file ASTs
+export const astCache = new Map<string, FileAnalysisResult>();
 
-// Cache of analyzed modules to avoid repeated work
+// Cache for client-side dependency analysis
 export const clientSideDependencyCache = new Map<string, boolean>();
 
-// Store file modification timestamps
-const fileTimestamps = new Map<string, number>();
+// Cache for file timestamps
+export const fileTimestamps = new Map<string, number>();
 
 /**
- * Checks if a file has changed since it was last cached
+ * Check if a file has been modified since last check
  */
 export function hasFileChanged(filePath: string): boolean {
 	try {
-		const stats = statSync(filePath);
-		const lastMod = stats.mtimeMs;
-
-		if (fileTimestamps.has(filePath) && fileTimestamps.get(filePath) === lastMod) {
-			return false;
+		// If file doesn't exist or there's an error, consider it changed
+		if (!existsSync(filePath)) {
+			return true;
 		}
 
-		fileTimestamps.set(filePath, lastMod);
+		const stats = statSync(filePath);
+		const lastModified = stats.mtimeMs;
+		const lastKnownModified = fileTimestamps.get(filePath);
+
+		if (lastKnownModified === undefined || lastModified > lastKnownModified) {
+			fileTimestamps.set(filePath, lastModified);
+			return true;
+		}
+
+		return false;
+	} catch (_err) {
+		// If there's an error checking the file, consider it changed
 		return true;
-	} catch (err: unknown) {
-		console.warn(`Error checking if file ${filePath} has changed:`, err);
-		return true; // If we can't check, assume changed
 	}
 }
 
-// Update the getFileAST function to use the proper type
+/**
+ * Gets AST for a file with caching
+ */
 export function getFileAST(filePath: string): FileAnalysisResult {
 	// Return from cache if available and file hasn't changed
 	if (astCache.has(filePath) && !hasFileChanged(filePath)) {
@@ -185,31 +220,32 @@ export function getFileAST(filePath: string): FileAnalysisResult {
 	}
 
 	try {
-		const content = readFileSync(filePath, "utf8");
-		const result: FileAnalysisResult = {
-			hasUseClient: false,
-			hasClientCode: false,
-			analyzedAt: Date.now()
-		};
-
-		// Check for use client directive
-		if (content.includes("'use client'") || content.includes('"use client"')) {
-			result.hasUseClient = true;
-			astCache.set(filePath, result);
-			return result;
+		// If file doesn't exist, return error result
+		if (!existsSync(filePath)) {
+			return {
+				error: true,
+				hasUseClient: undefined,
+				hasClientCode: undefined
+			};
 		}
 
+		const fileContent = readFileSync(filePath, "utf8");
+		const result: FileAnalysisResult = {
+			hasUseClient: fileContent.includes("'use client'") || fileContent.includes('"use client"'),
+			hasClientCode: false
+		};
+
 		// Check for compiled client code
-		if (mightBeCompiledClientCode(content)) {
+		if (mightBeCompiledClientCode(fileContent)) {
 			result.hasClientCode = true;
 			astCache.set(filePath, result);
 			return result;
 		}
 
-		// Simple regex checks for DOM APIs
+		// Check for browser APIs
 		for (const api of browserAPIs) {
 			const regex = new RegExp(`\\b${api}\\b`, "g");
-			if (regex.test(content)) {
+			if (regex.test(fileContent)) {
 				result.hasClientCode = true;
 				astCache.set(filePath, result);
 				return result;
@@ -219,7 +255,7 @@ export function getFileAST(filePath: string): FileAnalysisResult {
 		// Check for client-only hooks
 		for (const hook of clientOnlyHooks) {
 			const regex = new RegExp(`\\b${hook}\\b`, "g");
-			if (regex.test(content)) {
+			if (regex.test(fileContent)) {
 				result.hasClientCode = true;
 				astCache.set(filePath, result);
 				return result;
@@ -230,12 +266,11 @@ export function getFileAST(filePath: string): FileAnalysisResult {
 		astCache.set(filePath, result);
 		return result;
 	} catch (_err) {
-		const errorResult: FileAnalysisResult = {
+		return {
 			error: true,
-			analyzedAt: Date.now()
+			hasUseClient: undefined,
+			hasClientCode: undefined
 		};
-		// We don't cache errors
-		return errorResult;
 	}
 }
 
@@ -243,10 +278,29 @@ export function getFileAST(filePath: string): FileAnalysisResult {
  * Gets cached client dependency analysis or checks file if needed
  */
 export function getClientDependency(filePath: string): boolean | null {
-	if (clientSideDependencyCache.has(filePath) && !hasFileChanged(filePath)) {
-		return clientSideDependencyCache.get(filePath) ?? false;
+	// If the file is in cache, check if it has changed
+	if (clientSideDependencyCache.has(filePath)) {
+		// For non-existent files, return the cached value
+		if (!existsSync(filePath)) {
+			return clientSideDependencyCache.get(filePath) ?? false;
+		}
+		if (hasFileChanged(filePath)) {
+			// If file has changed, remove from cache and return null
+			clientSideDependencyCache.delete(filePath);
+			return null;
+		}
+		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+		return clientSideDependencyCache.get(filePath) || false;
 	}
-	return null; // Cache miss, needs fresh analysis
+	return null;
+}
+
+/**
+ * Handle error when setting timestamp
+ */
+function handleTimestampError(filePath: string): void {
+	console.info("Error setting timestamp for file", filePath);
+	fileTimestamps.delete(filePath);
 }
 
 /**
@@ -254,6 +308,15 @@ export function getClientDependency(filePath: string): boolean | null {
  */
 export function setClientDependency(filePath: string, isClientSide: boolean): void {
 	clientSideDependencyCache.set(filePath, isClientSide);
+	// Update timestamp for the file to prevent hasFileChanged from returning true
+	if (existsSync(filePath)) {
+		try {
+			const stats = statSync(filePath);
+			fileTimestamps.set(filePath, stats.mtimeMs);
+		} catch (_err) {
+			handleTimestampError(filePath);
+		}
+	}
 }
 
 /**

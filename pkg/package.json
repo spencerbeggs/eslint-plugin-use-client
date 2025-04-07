@@ -23,18 +23,24 @@
 	},
 	"scripts": {
 		"build": "tsup",
-		"start": "tsx src/index.ts"
+		"start": "tsx src/index.ts",
+		"test": "vitest run --coverage",
+		"test:watch": "vitest watch"
 	},
 	"dependencies": {
-		"@typescript-eslint/utils": "^8.29.0"
+		"@typescript-eslint/utils": "^8.29.1"
 	},
 	"devDependencies": {
+		"@headlessui/react": "^2.2.1",
 		"@types/eslint": "^9.6.1",
 		"@types/estree": "^1.0.7",
-		"@typescript-eslint/rule-tester": "^8.29.0"
+		"@types/node": "^22.14.0",
+		"@types/react": "^19.1.0",
+		"@typescript-eslint/parser": "^8.29.1",
+		"@typescript-eslint/rule-tester": "^8.29.1"
 	},
 	"peerDependencies": {
-		"@typescript-eslint/parser": ">=6.0.0",
+		"@typescript-eslint/parser": "^8.29.1",
 		"eslint": ">=9.0.0",
 		"typescript": ">=5.0.0"
 	},

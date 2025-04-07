@@ -6,11 +6,12 @@
 		"moduleResolution": "NodeNext",
 		"esModuleInterop": true,
 		"declaration": true,
+		"jsx": "preserve",
 		"outDir": "./dist",
 		"strict": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	"include": ["*.ts", "src/**/*.ts", "__test__/**/*.ts", "package.json"],
+	"include": ["*.ts", "src/**/*.ts", "__test__/**/*.ts", "__test__/**/*.tsx", "package.json"],
 	"exclude": ["node_modules", "dist"]
 }

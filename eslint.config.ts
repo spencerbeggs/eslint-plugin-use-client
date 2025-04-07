@@ -9,7 +9,7 @@ import type { FlatConfig } from "@typescript-eslint/utils/ts-eslint";
 
 const config = tseslint.config(
 	{
-		ignores: ["**/dist/**"]
+		ignores: ["**/dist/**", "**/node_modules/**", "**/.coverage/**"]
 	},
 	eslint.configs.recommended,
 	tseslint.configs.strictTypeChecked,
