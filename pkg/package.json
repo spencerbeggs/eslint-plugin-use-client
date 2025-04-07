@@ -2,6 +2,14 @@
 	"name": "eslint-plugin-use-client",
 	"version": "0.0.0",
 	"private": true,
+	"description": "ESLint plugin for enforcing proper usage of React's 'use client' directive",
+	"keywords": [
+		"eslint",
+		"eslintplugin",
+		"react",
+		"nextjs",
+		"use-client"
+	],
 	"type": "module",
 	"exports": {
 		".": {
@@ -13,7 +21,21 @@
 		"build": "tsup",
 		"start": "tsx src/index.ts"
 	},
+	"dependencies": {
+		"@typescript-eslint/utils": "^8.29.0"
+	},
+	"devDependencies": {
+		"@types/eslint": "^9.6.1",
+		"@types/estree": "^1.0.7",
+		"@typescript-eslint/rule-tester": "^8.29.0"
+	},
 	"peerDependencies": {
-		"eslint": ">=9.0.0"
+		"@typescript-eslint/parser": ">=6.0.0",
+		"eslint": ">=9.0.0",
+		"typescript": ">=5.0.0"
+	},
+	"engines": {
+		"node": ">=18.0.0",
+		"npm": ">=8.0.0"
 	}
 }
