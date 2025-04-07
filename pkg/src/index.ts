@@ -1,4 +1,7 @@
-import { enforceRule } from "./rules/index.js";
+import { enforceRule } from "./rules/enforce-use-client-advanced.js";
+
+declare const __PACKAGE_NAME__: string;
+declare const __PACKAGE_VERSION__: string;
 
 // Common client-side libraries for Next.js
 const nextjsAllowlist = {
@@ -13,8 +16,8 @@ const nextjsAllowlist = {
 // Export the plugin with the flat config format
 export default {
 	meta: {
-		name: "react-use-client",
-		version: "0.0.0"
+		name: __PACKAGE_NAME__,
+		version: __PACKAGE_VERSION__
 	},
 	rules: {
 		"enforce-use-client": enforceRule

@@ -17,6 +17,10 @@ export default defineConfig({
 	format: "esm",
 	minify: false,
 	tsconfig: "tsconfig.json",
+	define: {
+		__PACKAGE_NAME__: JSON.stringify(process.env.npm_package_name ?? "eslint-plugin"),
+		__PACKAGE_VERSION__: JSON.stringify(process.env.npm_package_version ?? "0.0.0")
+	},
 	async onSuccess() {
 		await copyFile(join(process.cwd(), "..", "LICENSE"), join(process.cwd(), "dist", "LICENSE"));
 
@@ -38,6 +42,8 @@ export default defineConfig({
 				types: "./index.d.ts"
 			}
 		};
+
+		delete processedPackageJson.private;
 
 		// Write processed package.json to dist
 		await writeFile(join(process.cwd(), "dist", "package.json"), JSON.stringify(processedPackageJson, null, "\t"));
