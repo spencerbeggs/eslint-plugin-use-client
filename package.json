@@ -2,6 +2,10 @@
 	"name": "root",
 	"version": "0.0.0",
 	"private": true,
+	"author": {
+		"name": "C. Spencer Beggs",
+		"email": "spencer@beg.gs"
+	},
 	"type": "module",
 	"scripts": {
 		"build": "turbo run build",
