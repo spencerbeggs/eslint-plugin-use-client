@@ -36,29 +36,29 @@ The root `turbo.json` defines global pipeline configurations:
 
 ```json
 {
-  "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".env", "tsconfig.json"],
-  "pipeline": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "test": {
-      "dependsOn": ["build"],
-      "inputs": ["src/**/*.ts", "src/**/*.tsx", "__tests__/**/*.ts"],
-      "outputs": []
-    },
-    "lint": {
-      "outputs": []
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "clean": {
-      "cache": false
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"globalDependencies": [".env", "tsconfig.json"],
+	"pipeline": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"test": {
+			"dependsOn": ["build"],
+			"inputs": ["src/**/*.ts", "src/**/*.tsx", "__tests__/**/*.ts"],
+			"outputs": []
+		},
+		"lint": {
+			"outputs": []
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"clean": {
+			"cache": false
+		}
+	}
 }
 ```
 
@@ -77,13 +77,13 @@ Each workspace (package) can have its own `turbo.json` for package-specific sett
 ```json
 // pkg/turbo.json
 {
-  "extends": ["//"],
-  "pipeline": {
-    "build": {
-      "outputs": ["dist/**"],
-      "dependsOn": ["^build"]
-    }
-  }
+	"extends": ["//"],
+	"pipeline": {
+		"build": {
+			"outputs": ["dist/**"],
+			"dependsOn": ["^build"]
+		}
+	}
 }
 ```
 
@@ -93,14 +93,14 @@ Our root `package.json` defines scripts that leverage Turborepo:
 
 ```json
 {
-  "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "clean": "turbo run clean",
-    "release": "turbo run build lint test && changeset publish"
-  }
+	"scripts": {
+		"build": "turbo run build",
+		"dev": "turbo run dev",
+		"lint": "turbo run lint",
+		"test": "turbo run test",
+		"clean": "turbo run clean",
+		"release": "turbo run build lint test && changeset publish"
+	}
 }
 ```
 
@@ -111,14 +111,14 @@ Each workspace has its own scripts:
 ```json
 // pkg/package.json
 {
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "lint": "eslint ./src --ext .ts,.tsx",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "clean": "rimraf .turbo dist coverage"
-  }
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"lint": "eslint ./src --ext .ts,.tsx",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"clean": "rimraf .turbo dist coverage"
+	}
 }
 ```
 
@@ -191,19 +191,19 @@ We use custom scripts in the `turbo/scripts` directory to enhance workflow:
 
 ```typescript
 // turbo/scripts/toggle-vscode-settings.ts
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 // Toggle specific VS Code settings
-const settingsPath = path.resolve(__dirname, '../../.vscode/settings.json');
-const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+const settingsPath = path.resolve(__dirname, "../../.vscode/settings.json");
+const settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
 
 // Toggle search and file excludes
-settings['search.exclude']['.turbo'] = !settings['search.exclude']['.turbo'];
-settings['files.exclude']['.turbo'] = !settings['files.exclude']['.turbo'];
+settings["search.exclude"][".turbo"] = !settings["search.exclude"][".turbo"];
+settings["files.exclude"][".turbo"] = !settings["files.exclude"][".turbo"];
 
 fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-console.log('VS Code settings toggled successfully');
+console.log("VS Code settings toggled successfully");
 ```
 
 Run these scripts with:
@@ -216,7 +216,7 @@ npx tsx turbo/scripts/toggle-vscode-settings.ts
 
 Turborepo respects environment variables:
 
-- **Global Environment**: Variables defined in `.env` 
+- **Global Environment**: Variables defined in `.env`
 - **Task-specific**: Variables defined in `.env.{taskname}`
 - **CLI Passthrough**: Variables passed via command line
 
@@ -231,27 +231,27 @@ Our GitHub Actions workflows use Turborepo for CI:
 
 ```yaml
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Test
-        run: npm run test
-      # Cache Turborepo outputs
-      - name: Cache Turborepo
-        uses: actions/cache@v3
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-turbo-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-turbo-
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: "18"
+            - name: Install dependencies
+              run: npm ci
+            - name: Build
+              run: npm run build
+            - name: Test
+              run: npm run test
+            # Cache Turborepo outputs
+            - name: Cache Turborepo
+              uses: actions/cache@v3
+              with:
+                  path: .turbo
+                  key: ${{ runner.os }}-turbo-${{ github.sha }}
+                  restore-keys: |
+                      ${{ runner.os }}-turbo-
 ```
 
 ## Troubleshooting Common Issues

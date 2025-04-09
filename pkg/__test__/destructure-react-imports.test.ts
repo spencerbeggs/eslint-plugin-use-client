@@ -1,11 +1,11 @@
 import { describe } from "vitest";
-import { destructureReactImports } from "../src/rules/destructure-react-imports.js";
+import { destructureReactImportsRule } from "../src/rules/destructure-react-imports.js";
 import { TSTester } from "./utils/tester.js";
 
 describe("[rule] destructure-react-imports", () => {
 	const rule = TSTester.create();
 
-	rule.run("destructure-react-imports", destructureReactImports, {
+	rule.run("destructure-react-imports", destructureReactImportsRule, {
 		valid: [
 			{
 				name: "already destructured React imports",

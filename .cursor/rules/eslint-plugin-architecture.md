@@ -15,7 +15,7 @@ eslint-plugin-use-client/
 │   │   ├── rule2.ts
 │   │   └── ...
 │   └── util/               # Shared utilities
-├── tests/                  # Test files
+├── __test__/                  # Test files
 └── package.json            # Package metadata
 ```
 
@@ -27,74 +27,109 @@ The main file that exports the plugin's rules and configurations:
 
 ```typescript
 // index.ts
-import useClientDirective from './rules/use-client-directive';
-import destructureReactImports from './rules/destructure-react-imports';
+import useClientDirective from "./rules/use-client-directive";
+import destructureReactImports from "./rules/destructure-react-imports";
 
 export = {
-  rules: {
-    'use-client-directive': useClientDirective,
-    'destructure-react-imports': destructureReactImports,
-  },
-  configs: {
-    recommended: {
-      plugins: ['use-client'],
-      rules: {
-        'use-client/use-client-directive': 'error',
-        'use-client/destructure-react-imports': 'warn',
-      },
-    },
-  },
+	rules: {
+		"use-client-directive": useClientDirective,
+		"destructure-react-imports": destructureReactImports
+	},
+	configs: {
+		recommended: {
+			plugins: ["use-client"],
+			rules: {
+				"use-client/use-client-directive": "error",
+				"use-client/destructure-react-imports": "warn"
+			}
+		}
+	}
 };
 ```
 
 ### 2. Rule Implementation
 
-Each rule is a separate module that exports a rule object:
+Each rule is a separate module that exports a rule object. Here is a well-designed reference rule that check the case of function names:
 
 ```typescript
-// rules/use-client-directive.ts
-import { Rule } from 'eslint';
-import { AST } from 'estree';
+// rules/function-case.ts
+import { ESLintUtils } from "@typescript-eslint/utils";
+import type { TSESTree } from "@typescript-eslint/utils";
 
-const rule: Rule.RuleModule = {
-  meta: {
-    type: 'problem',
-    docs: {
-      description: 'Enforce proper use of the "use client" directive',
-      category: 'Possible Errors',
-      recommended: true,
-    },
-    fixable: 'code',
-    schema: [], // No options
-    messages: {
-      missingDirective: 'Client component must have "use client" directive',
-      incorrectPosition: '"use client" directive must be at the top of the file',
-      // more message types...
-    },
-  },
-  
-  create(context) {
-    // Implementation logic
-    return {
-      // AST node visitors
-      Program(node: AST.Node) {
-        // Check for directive presence/position
-      },
-      
-      CallExpression(node: AST.Node) {
-        // Check for React hooks usage
-      },
-      
-      JSXElement(node: AST.Node) {
-        // Check for event handlers in JSX
-      },
-      
-      // Additional node visitors...
-    };
-  },
-};
+/**
+ *  The type of function case to enforce.
+ */
+export enum FunctionCase {
+	SHOULD_BE_UPPER = "uppercase",
+	SHOULD_BE_LOWER = "lowercase"
+}
 
-export default rule;
+/**
+ * The type of message id to use.
+ */
+type MessageIds = `${FunctionCase}`;
+
+type RuleOptions = [
+	{
+		style: MessageIds;
+	}
+];
+
+/**
+ * The function case rule.
+ */
+export const functionCaseRule = ESLintUtils.RuleCreator<{
+	recommended: boolean;
+}>((name) => `spencerbeggs.codes/eslint-plugin-use-client/rules${name}`)<RuleOptions, MessageIds>({
+	name: "function-case",
+	meta: {
+		docs: {
+			description: "Controls how functions names are written.",
+			recommended: true
+		},
+		messages: {
+			uppercase: "Start the function name with an uppercase letter.",
+			lowercase: "Start the function name with a lowercase letter."
+		},
+		type: "suggestion",
+		schema: [
+			{
+				type: "object",
+				properties: {
+					style: {
+						type: "string",
+						enum: Object.values(FunctionCase)
+					}
+				},
+				additionalProperties: false
+			}
+		]
+	},
+	defaultOptions: [{ style: FunctionCase.SHOULD_BE_UPPER }],
+	create(context, options) {
+		const { style } = options[0];
+		return {
+			FunctionDeclaration(node: TSESTree.FunctionDeclaration) {
+				if (node.id !== null) {
+					const isLowercase = /^[a-z]/.test(node.id.name);
+					const isUppercase = /^[A-Z]/.test(node.id.name);
+
+					if (isLowercase && style === FunctionCase.SHOULD_BE_UPPER) {
+						context.report({
+							messageId: FunctionCase.SHOULD_BE_UPPER,
+							node: node.id
+						});
+					} else if (isUppercase && style === FunctionCase.SHOULD_BE_LOWER) {
+						context.report({
+							messageId: FunctionCase.SHOULD_BE_LOWER,
+							node: node.id
+						});
+					}
+				}
+			}
+		};
+	}
+});
 ```
 
 ## Rule Development Flow
@@ -105,6 +140,7 @@ export default rule;
 4. **Add Error Reporting**: Use `context.report()` to flag issues
 5. **Implement Fixes**: Provide auto-fix functions when possible
 6. **Write Tests**: Create test cases covering valid and invalid code patterns
+7. **Type-Aware**: Rules must be compatible with typescript-eslint. Use the @typescript-eslint/utils and @typescript-eslint/scope-manager packages
 
 ## AST Traversal
 
@@ -134,48 +170,93 @@ Rules can provide fixes by including a `fix` function in the report:
 
 ```typescript
 context.report({
-  node,
-  messageId: 'missingDirective',
-  fix: (fixer) => {
-    return fixer.insertTextBefore(
-      sourceCode.ast,
-      '"use client";\n\n'
-    );
-  },
+	node,
+	messageId: "missingDirective",
+	fix: (fixer) => {
+		return fixer.insertTextBefore(sourceCode.ast, '"use client";\n\n');
+	}
 });
 ```
 
 ## Testing Rules
 
-We use `@typescript-eslint/rule-tester` with Vitest to test our rules:
+We use `@typescript-eslint/rule-tester` with Vitest to test our rules. Here is an example of testing the rule from the previous section:
 
 ```typescript
-import { RuleTester } from '@typescript-eslint/rule-tester';
-import rule from '../src/rules/use-client-directive';
+// __test__/function-case.test.ts
+import { describe } from "vitest";
+import { functionCaseRule, FunctionCase } from "../src/rules/function-case-rule.js";
+import { dedent, TSTester } from "./utils/index.js";
 
-const ruleTester = new RuleTester({
-  parser: '@typescript-eslint/parser',
-});
+describe("[rule] function-case", () => {
+	describe("options", () => {
+		const rule = TSTester.create();
+		describe("style", () => {
+			rule.run("lowercase", functionCaseRule, {
+				valid: [
+					{
+						name: "function name is lowercase",
+						code: dedent`
+							function foobar() {
+								return "foobar";
+							}
+						`,
+						options: [{ style: FunctionCase.SHOULD_BE_LOWER }],
+						filename: "lowercase-function-name.tsx"
+					}
+				],
+				invalid: [
+					{
+						name: "function name is uppercase",
+						code: dedent`
+							function Foobar() {
+								return "Foobar";
+							}
+						`,
+						options: [{ style: FunctionCase.SHOULD_BE_LOWER }],
+						errors: [{ messageId: "lowercase" }],
+						filename: "uppercase-function-name.tsx"
+					}
+				]
+			});
 
-ruleTester.run('use-client-directive', rule, {
-  valid: [
-    // Valid code examples
-    {
-      code: `"use client";\nimport { useState } from 'react';\n`,
-      filename: 'component.tsx',
-    },
-  ],
-  invalid: [
-    // Invalid code examples with expected errors
-    {
-      code: `import { useState } from 'react';\nconst Component = () => { const [s, setS] = useState(); }`,
-      filename: 'component.tsx',
-      errors: [{ messageId: 'missingDirective' }],
-      output: `"use client";\n\nimport { useState } from 'react';\nconst Component = () => { const [s, setS] = useState(); }`,
-    },
-  ],
+			rule.run("uppercase", functionCaseRule, {
+				valid: [
+					{
+						name: "function name is uppercase",
+						code: dedent`
+							function Foobar() {
+								return "Foobar";
+							}
+						`,
+						options: [{ style: FunctionCase.SHOULD_BE_UPPER }],
+						filename: "uppercase-function-name.tsx"
+					}
+				],
+				invalid: [
+					{
+						name: "function name is lowercase",
+						code: dedent`
+							function foobar() {
+								return "foobar";
+							}
+						`,
+						options: [{ style: FunctionCase.SHOULD_BE_UPPER }],
+						errors: [{ messageId: FunctionCase.SHOULD_BE_UPPER }],
+						filename: "lowercase-function-name.tsx"
+					}
+				]
+			});
+		});
+	});
 });
 ```
+
+Note the usage of the special `dedent` template tag imported from our utils. This function MUST be used on the the tests cases `code` and `output` properties. It's job is to ensure human readability of code sttrings that are hard to read for humans when indented.
+
+## Local Testing
+
+When iterating on the project besure to dilligently fix lint errors before moving on to a next step. This is an important step to ensure that we do not get stuck in a loop. The LLM can run tests from the repo root with the `pnpm test` command
 
 ## Continuous Integration
 

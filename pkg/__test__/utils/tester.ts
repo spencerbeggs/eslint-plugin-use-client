@@ -19,7 +19,13 @@ export class TSTester {
 	static create() {
 		return new RuleTester({
 			languageOptions: {
+				ecmaVersion: 2021,
+				sourceType: "module",
 				parserOptions: {
+					ecmaFeatures: {
+						jsx: true
+					},
+					project: "./tsconfig.json",
 					projectService: {
 						allowDefaultProject: ["*.ts*"],
 						maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 20
