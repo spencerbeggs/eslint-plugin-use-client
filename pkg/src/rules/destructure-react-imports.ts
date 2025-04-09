@@ -47,7 +47,7 @@ function getTypeParameters(
  * The destructure-react-imports rule.
  * This rule is type-aware and will preserve TypeScript types in the output.
  */
-export const destructureReactImports = ESLintUtils.RuleCreator<{
+export const destructureReactImportsRule = ESLintUtils.RuleCreator<{
 	recommended: boolean;
 }>((name) => `https://spencerbeg.gs/rule/${name}`)<RuleOptions, MessageIds>({
 	name: "destructure-react-imports",

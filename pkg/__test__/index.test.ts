@@ -11,7 +11,6 @@ describe("eslint-plugin-react-use-client", () => {
 
 		it("should have rules", () => {
 			expect(plugin.rules).toBeDefined();
-			expect(plugin.rules["function-case"]).toBeDefined();
 		});
 
 		it("should have configs", () => {
@@ -24,12 +23,6 @@ describe("eslint-plugin-react-use-client", () => {
 		it("should return correct recommended config", () => {
 			const config = plugin.configs.recommended();
 			expect(config.plugins).toContain("react-use-client");
-			expect(config.rules["react-use-client/function-case"]).toBeDefined();
-
-			const ruleConfig = config.rules["react-use-client/function-case"] as [string, Record<string, unknown>];
-			expect(Array.isArray(ruleConfig)).toBe(true);
-			expect(ruleConfig[0]).toBe("error");
-			expect(ruleConfig[1].style).toBe("uppercase");
 		});
 	});
 });
