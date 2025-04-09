@@ -5,6 +5,7 @@ export default defineConfig({
 	cacheDir: "./.vitest/cache",
 	test: {
 		//reporters: process.env.GITHUB_ACTIONS ? ["github-actions"] : ["text"],
+		include: ["pkg/__test__/**/*.test.ts"],
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "json", ["html", { subdir: "report" }]],

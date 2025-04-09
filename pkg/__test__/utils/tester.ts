@@ -1,6 +1,14 @@
 import { resolve } from "node:path";
 import { RuleTester } from "@typescript-eslint/rule-tester";
 
+interface TestCase {
+	name?: string;
+	code: string;
+	output?: string;
+	errors?: { messageId: string }[];
+	filename?: string;
+}
+
 /**
  * A helper class for createing new type-aware rule testers.
  * @example
@@ -19,14 +27,24 @@ export class TSTester {
 	static create() {
 		return new RuleTester({
 			languageOptions: {
+				ecmaVersion: 2021,
+				sourceType: "module",
 				parserOptions: {
+					ecmaFeatures: {
+						jsx: true
+					},
+					project: "./tsconfig.json",
 					projectService: {
 						allowDefaultProject: ["*.ts*"],
-						maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 20
+						maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 50
 					},
 					tsconfigRootDir: resolve(import.meta.dirname, "../..")
 				}
 			}
 		});
+	}
+
+	static createTestCase(testCase: TestCase): TestCase {
+		return testCase;
 	}
 }

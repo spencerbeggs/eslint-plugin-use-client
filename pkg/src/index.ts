@@ -1,5 +1,8 @@
-import { destructureReactImports } from "./rules/destructure-react-imports.js";
-import { FunctionCase, functionCaseRule } from "./rules/function-case-rule.js";
+import { consistentUseClientPlacementRule } from "./rules/consistent-use-client-placement.js";
+import { destructureReactImportsRule } from "./rules/destructure-react-imports.js";
+import { noMixedServerClientAPIsRule } from "./rules/no-mixed-server-client-apis.js";
+import { noServerOnlyInClientRule } from "./rules/no-server-only-in-client.js";
+import { useClientDirectiveRule } from "./rules/use-client-directive.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -15,21 +18,22 @@ export default {
 		version: __PACKAGE_VERSION__
 	},
 	rules: {
-		"function-case": functionCaseRule,
-		"destructure-react-imports": destructureReactImports
+		"destructure-react-imports": destructureReactImportsRule,
+		"use-client-directive": useClientDirectiveRule,
+		"consistent-use-client-placement": consistentUseClientPlacementRule,
+		"no-mixed-server-client-apis": noMixedServerClientAPIsRule,
+		"no-server-only-in-client": noServerOnlyInClientRule
 	},
 	configs: {
 		// Base configuration - includes all rules without specific options
 		recommended: () => ({
 			plugins: ["react-use-client"],
 			rules: {
-				"react-use-client/function-case": [
-					"error",
-					{
-						style: FunctionCase.SHOULD_BE_UPPER
-					}
-				],
-				"react-use-client/destructure-react-imports": "error"
+				"react-use-client/destructure-react-imports": "error",
+				"react-use-client/use-client-directive": "error",
+				"react-use-client/consistent-use-client-placement": "error",
+				"react-use-client/no-mixed-server-client-apis": "error",
+				"react-use-client/no-server-only-in-client": "error"
 			}
 		})
 	}
