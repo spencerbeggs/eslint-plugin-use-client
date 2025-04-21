@@ -1,0 +1,37 @@
+name: Debug Environment
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    debug:
+        name: Debug Environment Variables
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: ".nvmrc"
+
+            - name: Debug Environment
+              run: |
+                  echo "GITHUB_ACTIONS=$GITHUB_ACTIONS"
+                  echo "CI=$CI"
+                  echo "GITHUB_CI=$GITHUB_CI"
+                  echo "All environment variables:"
+                  env | sort
+
+            - name: Test Script
+              run: |
+                  cat > test-debug.js << 'EOF'
+                  console.log('GITHUB_ACTIONS:', process.env.GITHUB_ACTIONS);
+                  console.log('CI:', process.env.CI);
+                  console.log('Condition result:', process.env.GITHUB_ACTIONS ? 15000 : 5000);
+                  EOF
+                  node test-debug.js

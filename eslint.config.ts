@@ -8,6 +8,9 @@ import tseslint from "typescript-eslint";
 import type { FlatConfig } from "@typescript-eslint/utils/ts-eslint";
 
 const config = tseslint.config(
+	{
+		ignores: ["**/dist/**", "**/node_modules/**", "**/.coverage/**"]
+	},
 	eslint.configs.recommended,
 	tseslint.configs.strictTypeChecked,
 	tseslint.configs.stylisticTypeChecked,
@@ -42,6 +45,18 @@ const config = tseslint.config(
 				{
 					prefer: "type-imports",
 					fixStyle: "separate-type-imports"
+				}
+			],
+			"@typescript-eslint/no-unused-vars": [
+				"error",
+				{
+					args: "all",
+					argsIgnorePattern: "^_",
+					caughtErrors: "all",
+					caughtErrorsIgnorePattern: "^_",
+					destructuredArrayIgnorePattern: "^_",
+					varsIgnorePattern: "^_",
+					ignoreRestSiblings: true
 				}
 			],
 			"import-x/order": [
