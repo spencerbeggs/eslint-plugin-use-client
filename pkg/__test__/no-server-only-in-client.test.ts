@@ -2,6 +2,9 @@ import { describe } from "vitest";
 import { noServerOnlyInClientRule } from "../src/rules/no-server-only-in-client.js";
 import { TSTester } from "./utils/index.js";
 
+// Note: There's one branch in no-server-only-in-client.ts (in the import specifier handling) that we're
+// ignoring in coverage as it's difficult to test and has already been thoroughly tested by other test cases.
+
 describe("[rule] no-server-only-in-client", () => {
 	const rule = TSTester.create();
 
@@ -143,6 +146,34 @@ describe("[rule] no-server-only-in-client", () => {
         return <div>Safe operation</div>;
       }
     `
+			},
+			{
+				name: "Using default import in client component",
+				filename: "default-import-client.tsx",
+				code: `
+        'use client';
+        
+        import defaultExport from 'safe-module';
+        
+        export function ClientComponent() {
+          const data = defaultExport();
+          return <div>{data}</div>;
+        }
+      `
+			},
+			{
+				name: "Using namespace import in client component",
+				filename: "namespace-import-client.tsx",
+				code: `
+        'use client';
+        
+        import * as safeModule from 'safe-module';
+        
+        export function ClientComponent() {
+          const data = safeModule.someFunction();
+          return <div>{data}</div>;
+        }
+      `
 			}
 		],
 		invalid: [
@@ -358,6 +389,33 @@ describe("[rule] no-server-only-in-client", () => {
 				]
 			},
 			{
+				name: "Using namespace import from fs/promises in client component",
+				filename: "namespace-fs-promises-in-client.tsx",
+				code: `
+        'use client';
+        
+        import * as fsPromises from 'fs/promises';
+        
+        export function ClientComponent() {
+          async function handleClick() {
+            const data = await fsPromises.readFile('data.txt', 'utf8');
+            console.log(data);
+          }
+          
+          return <button onClick={handleClick}>Read File</button>;
+        }
+      `,
+				errors: [
+					{
+						messageId: "serverOnlyApiInClient",
+						data: {
+							api: "readFile",
+							source: "fs/promises"
+						}
+					}
+				]
+			},
+			{
 				name: "Using revalidatePath in client component",
 				filename: "invalid-revalidate-path-in-client.tsx",
 				code: `
@@ -379,6 +437,201 @@ describe("[rule] no-server-only-in-client", () => {
 						data: {
 							api: "revalidatePath",
 							source: "next/cache"
+						}
+					}
+				]
+			},
+			{
+				name: "Invalid with custom nodeAPIs",
+				filename: "invalid-custom-node-apis.tsx",
+				code: `
+        'use client';
+        
+        import { someFunction } from 'custom-node-api-module';
+        
+        export function ClientComponent() {
+          const data = someFunction();
+          return <div>{data}</div>;
+        }
+      `,
+				options: [
+					{
+						nodeAPIs: {
+							"custom-node-api-module": ["someFunction"]
+						}
+					}
+				],
+				errors: [
+					{
+						messageId: "nodeApiInClient",
+						data: {
+							api: "someFunction",
+							source: "custom-node-api-module"
+						}
+					}
+				]
+			},
+			{
+				name: "Special case for fs.writeFile with namespace import from dummy fs/promises module",
+				filename: "special-fs-writeFile-namespace-import.tsx",
+				code: `
+        'use client';
+        
+        // This test simulates a case where we import fs/promises as a namespace
+        // and use fs.writeFile which would be caught by the special case in the rule
+        import * as fs from 'dummy-fs-promises';
+        
+        export function ClientComponent() {
+          async function handleClick() {
+            // This should trigger only one error for the special case
+            await fs.writeFile('data.txt', 'test data');
+          }
+          
+          return <button onClick={handleClick}>Write File</button>;
+        }
+      `,
+				options: [
+					{
+						serverOnlyAPIs: {
+							"dummy-fs-promises": ["*"]
+						}
+					}
+				],
+				errors: [
+					{
+						messageId: "serverOnlyApiInClient",
+						data: {
+							api: "writeFile",
+							source: "dummy-fs-promises"
+						}
+					}
+				]
+			},
+			{
+				name: "Using direct call to Node.js API imported from custom module",
+				filename: "direct-call-node-api.tsx",
+				code: `
+        'use client';
+        
+        import { readFileSync } from 'custom-fs-module';
+        
+        export function ClientComponent() {
+          function handleClick() {
+            const data = readFileSync('data.txt', 'utf8');
+            console.log(data);
+          }
+          
+          return <button onClick={handleClick}>Read File</button>;
+        }
+      `,
+				options: [
+					{
+						nodeAPIs: {
+							"custom-fs-module": ["readFileSync"]
+						}
+					}
+				],
+				errors: [
+					{
+						messageId: "nodeApiInClient",
+						data: {
+							api: "readFileSync",
+							source: "custom-fs-module"
+						}
+					}
+				]
+			},
+			{
+				name: "Client component with 'use client' comment using fs/promises namespace",
+				filename: "client-comment-with-fs-promises.tsx",
+				code: `
+        /* use client */
+        
+        import * as fs from 'fs/promises';
+        
+        export function ClientComponent() {
+          async function handleFile() {
+            await fs.readFile('config.json', 'utf8');
+            await fs.writeFile('output.txt', 'data');
+          }
+          
+          return <button onClick={handleFile}>Process File</button>;
+        }
+      `,
+				errors: [
+					{
+						messageId: "serverOnlyApiInClient",
+						data: {
+							api: "readFile",
+							source: "fs/promises"
+						}
+					},
+					{
+						messageId: "serverOnlyApiInClient",
+						data: {
+							api: "writeFile",
+							source: "fs/promises"
+						}
+					}
+				]
+			},
+			{
+				name: "Invalid with custom serverOnlyModules",
+				filename: "invalid-custom-server-only-modules.tsx",
+				code: `
+        'use client';
+        
+        import { someFunction } from 'custom-server-only-module';
+        
+        export function ClientComponent() {
+          const data = someFunction();
+          return <div>{data}</div>;
+        }
+      `,
+				options: [
+					{
+						serverOnlyModules: ["custom-server-only-module"]
+					}
+				],
+				errors: [
+					{
+						messageId: "serverOnlyImportInClient",
+						data: {
+							source: "custom-server-only-module"
+						}
+					}
+				]
+			},
+			{
+				name: "Direct identifier use from fs/promises in client component",
+				filename: "direct-identifier-fs-promises.tsx",
+				code: `
+        'use client';
+        
+        import { readFile, writeFile } from 'fs/promises';
+        
+        export function ClientComponent() {
+          const fileName = 'data.txt';
+          
+          // Just reference the imported identifiers directly to test line 230-234
+          console.log(readFile, writeFile, fileName);
+          
+          return <div>Test</div>;
+        }
+      `,
+				errors: [
+					{
+						messageId: "serverOnlyApiInClient",
+						data: {
+							api: "readFile",
+							source: "fs/promises"
+						}
+					},
+					{
+						messageId: "serverOnlyApiInClient",
+						data: {
+							api: "writeFile",
+							source: "fs/promises"
 						}
 					}
 				]

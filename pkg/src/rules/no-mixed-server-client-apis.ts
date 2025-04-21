@@ -45,7 +45,7 @@ const DEFAULT_CLIENT_ONLY_APIS: Record<string, string[]> = {
 };
 
 export const noMixedServerClientAPIsRule = ESLintUtils.RuleCreator(
-	(name) => `https://github.com/spencer-eaglepoint/eslint-plugin-use-client/blob/main/docs/rules/${name}.md`
+	(name) => `https://github.com/spencerbeggs/eslint-plugin-use-client/blob/main/docs/rules/${name}.md`
 )<RuleOptions, MessageIds>({
 	name: "no-mixed-server-client-apis",
 	meta: {

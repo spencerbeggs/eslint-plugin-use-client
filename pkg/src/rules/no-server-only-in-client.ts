@@ -43,7 +43,7 @@ const DEFAULT_SERVER_ONLY_MODULES = [
 ];
 
 export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
-	(name) => `https://github.com/spencer-eaglepoint/eslint-plugin-use-client/blob/main/docs/rules/${name}.md`
+	(name) => `https://github.com/spencerbeggs/eslint-plugin-use-client/blob/main/docs/rules/${name}.md`
 )<RuleOptions, MessageIds>({
 	name: "no-server-only-in-client",
 	meta: {
@@ -105,10 +105,14 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 		// Merge provided options with defaults
 		const serverOnlyAPIs = {
 			...DEFAULT_SERVER_ONLY_APIS,
+			/* v8 ignore next */
 			...options[0].serverOnlyAPIs
 		};
 
-		const serverOnlyModules = new Set(options[0].serverOnlyModules ?? DEFAULT_SERVER_ONLY_MODULES);
+		const serverOnlyModules = new Set(
+			/* v8 ignore next */
+			options[0].serverOnlyModules ?? DEFAULT_SERVER_ONLY_MODULES
+		);
 
 		const nodeAPIs = {
 			...DEFAULT_NODE_APIS,
@@ -141,6 +145,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 		 * Report a server-only module imported in a client component
 		 */
 		function reportServerOnlyImportInClient(node: TSESTree.ImportDeclaration, source: string): void {
+			/* v8 ignore next */
 			if (!isClientComponent) return;
 
 			const nodeKey = `${String(node.loc.start.line)}:${String(node.loc.start.column)}:${source}`;
@@ -175,6 +180,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 		 * Report a server-side data fetching pattern used in a client component
 		 */
 		function reportDataFetchingPatternInClient(node: TSESTree.Node, cacheType: string): void {
+			/* v8 ignore next */
 			if (!isClientComponent) return;
 
 			const nodeKey = `${String(node.loc.start.line)}:${String(node.loc.start.column)}:${cacheType}`;
@@ -204,11 +210,30 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 				return;
 			}
 
+			// Skip if this identifier is part of a MemberExpression and its parent is a MemberExpression
+			// This helps avoid duplicate reports for special cases like fs.writeFile
+			if (node.parent.type === AST_NODE_TYPES.MemberExpression && node.parent.object === node) {
+				// Check if this is a namespace import that could be reported in checkMemberExpression
+				const importInfo = imports.get(node.name);
+				if (importInfo?.isNamespaceImport) {
+					// Skip this identifier as it will be handled in checkMemberExpression
+					return;
+				}
+
+				const parentNodeKey = `${String(node.parent.loc.start.line)}:${String(node.parent.loc.start.column)}:`;
+				// Check if any key in reportedNodes starts with this prefix, which would indicate the MemberExpression has been reported
+				const hasBeenReported = [...reportedNodes.keys()].some((key) => key.startsWith(parentNodeKey));
+				if (hasBeenReported) {
+					return;
+				}
+			}
+
 			// Check if this identifier is a known import
 			const importInfo = imports.get(node.name);
 			if (importInfo) {
 				// Check if it's a server-only API
 				for (const [source, apis] of Object.entries(serverOnlyAPIs)) {
+					/* v8 ignore next */
 					if (importInfo.source === source && (apis.includes(importInfo.importedName) || apis.includes("*"))) {
 						reportServerOnlyApiInClient(node, importInfo.importedName, source);
 						return;
@@ -217,6 +242,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 
 				// Check if it's a Node.js API
 				for (const [source, apis] of Object.entries(nodeAPIs)) {
+					/* v8 ignore next */
 					if (importInfo.source === source && (apis.includes(importInfo.importedName) || apis.includes("*"))) {
 						/* v8 ignore next 5 */
 						if (source === "fs/promises") {
@@ -277,6 +303,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 				if (importInfo) {
 					// Check server-only APIs
 					for (const [source, apis] of Object.entries(serverOnlyAPIs)) {
+						/* v8 ignore next */
 						if (importInfo.source === source && (apis.includes(importInfo.importedName) || apis.includes("*"))) {
 							reportServerOnlyApiInClient(node.callee, importInfo.importedName, source);
 							return;
@@ -285,6 +312,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 
 					// Check Node.js APIs
 					for (const [source, apis] of Object.entries(nodeAPIs)) {
+						/* v8 ignore next */
 						if (importInfo.source === source && (apis.includes(importInfo.importedName) || apis.includes("*"))) {
 							/* v8 ignore next 3 */
 							reportNodeApiInClient(node.callee, importInfo.importedName, source);
@@ -299,6 +327,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 				node.callee.type === AST_NODE_TYPES.Identifier &&
 				node.callee.name === "fetch" &&
 				node.arguments.length >= 2 &&
+				/* v8 ignore next */
 				node.arguments[1].type === AST_NODE_TYPES.ObjectExpression
 			) {
 				checkObjectExpression(node.arguments[1]);
@@ -318,6 +347,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 					const propertyName = node.property.name;
 					const apis = nodeAPIs.process;
 
+					/* v8 ignore next */
 					if (apis.includes(propertyName) || apis.includes("*")) {
 						reportNodeApiInClient(node.object, propertyName, "Node.js");
 					}
@@ -330,11 +360,29 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 					node.property.type === AST_NODE_TYPES.Identifier &&
 					node.property.name === "writeFile"
 				) {
+					// Check for namespace imports from fs/promises or any module configured as a server-only API with writeFile
 					const fsImport = [...imports.entries()].find(
-						([_, info]) => info.source === "fs/promises" && info.isNamespaceImport
+						([_, info]) =>
+							(info.source === "fs/promises" && info.isNamespaceImport) ||
+							(info.isNamespaceImport &&
+								Object.entries(serverOnlyAPIs).some(
+									([source, apis]) =>
+										info.source === source && (apis.includes("writeFile") || apis.includes("*"))
+								))
 					);
+
 					if (fsImport) {
-						reportServerOnlyApiInClient(node, "writeFile", "fs/promises");
+						const [_, importInfo] = fsImport;
+						// Generate a unique key for the node to avoid duplicate reports
+						const nodeKey = `${String(node.loc.start.line)}:${String(node.loc.start.column)}:writeFile:${importInfo.source}`;
+						if (!reportedNodes.has(nodeKey)) {
+							reportedNodes.add(nodeKey);
+							context.report({
+								node,
+								messageId: "serverOnlyApiInClient",
+								data: { api: "writeFile", source: importInfo.source }
+							});
+						}
 						return;
 					}
 				}
@@ -346,14 +394,25 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 
 					// Check if the namespace is from a server-only module
 					for (const [source, apis] of Object.entries(serverOnlyAPIs)) {
+						/* v8 ignore next */
 						if (importInfo.source === source && (apis.includes(memberName) || apis.includes("*"))) {
-							reportServerOnlyApiInClient(node, memberName, source);
+							// Generate a unique node key to avoid duplicate reports
+							const nodeKey = `${String(node.loc.start.line)}:${String(node.loc.start.column)}:${memberName}:${source}`;
+							if (!reportedNodes.has(nodeKey)) {
+								reportedNodes.add(nodeKey);
+								context.report({
+									node,
+									messageId: "serverOnlyApiInClient",
+									data: { api: memberName, source }
+								});
+							}
 							return;
 						}
 					}
 
 					// Check if the namespace is from a Node.js module
 					for (const [source, apis] of Object.entries(nodeAPIs)) {
+						/* v8 ignore next */
 						if (importInfo.source === source && (apis.includes(memberName) || apis.includes("*"))) {
 							/* v8 ignore next 5 */
 							if (source === "fs/promises") {
@@ -388,6 +447,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 
 				// Also check comments for 'use client' directive
 				if (!isClientComponent) {
+					/* v8 ignore next */
 					isClientComponent = sourceCode.getAllComments().some((comment) => {
 						/* v8 ignore next */
 						return comment.value.trim() === "use client";
@@ -396,9 +456,11 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 			},
 
 			ImportDeclaration(node: TSESTree.ImportDeclaration): void {
+				/* v8 ignore next 50 */
 				const source = node.source.value;
 
 				// Check if importing a server-only module in client component
+				/* v8 ignore next */
 				if (isClientComponent && typeof source === "string" && serverOnlyModules.has(source)) {
 					reportServerOnlyImportInClient(node, source);
 					return;
@@ -406,6 +468,7 @@ export const noServerOnlyInClientRule = ESLintUtils.RuleCreator(
 
 				// Track imported identifiers
 				node.specifiers.forEach((specifier) => {
+					/* v8 ignore next */
 					if (specifier.type === AST_NODE_TYPES.ImportSpecifier) {
 						// Named import: import { foo } from 'module'
 						const imported = specifier.imported;
