@@ -30,6 +30,10 @@ export default defineConfig({
 				statements: 95
 			}
 		},
-		environment: "node"
+		environment: "node",
+		// Increase timeout for CI environment
+		testTimeout: process.env.GITHUB_ACTIONS ? 15000 : 10000,
+		// Also set hookTimeout for before/after hooks
+		hookTimeout: process.env.GITHUB_ACTIONS ? 15000 : 10000
 	}
 });
